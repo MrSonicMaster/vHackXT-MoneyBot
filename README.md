@@ -15,6 +15,7 @@ Or run the included InstallDependencies files for your operating system.
 ### Usage
 To use vHack-MoneyBot, you must first put your login credentials into the config.json
 ![N|Solid](https://i.gyazo.com/d895187fc74517d45b58d1ad434a52f4.png)
+
 Next you can run the StartBot.bat file
 
 ### Bugs
