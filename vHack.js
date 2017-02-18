@@ -11,7 +11,7 @@ const Methods = require('./methods.js');
 
 class vHackBot {
   constructor(clientID) {
-    this.delayBetweenActions = 2400; // In miliseconds.
+    this.delayBetweenActions = 2400; // In milliseconds.
     this.agent = null;//agents[clientID] || null;
     this.clientID = clientID || 0;
     this.isGlobalSearch = 1;
