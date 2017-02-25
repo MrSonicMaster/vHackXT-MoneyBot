@@ -1,5 +1,5 @@
 # vHack-MoneyBot
-* NOTE: As of 2/22/2017 this bot has been patched due to API update (v3) *
+## BOT WORKS ON LATEST UPDATE (API v3) AS OF 2/24/17
 
 vHack MoneyBot is an open-source automated bot for the android game [vHack XT](https://play.google.com/store/apps/details?id=org.vhack.dev.vhack).
 
@@ -15,7 +15,7 @@ Or run the included InstallDependencies files for your operating system.
 
 ### Usage
 To use vHack-MoneyBot, you must first put your login credentials into the config.json
-![N|Solid](https://i.gyazo.com/d895187fc74517d45b58d1ad434a52f4.png)
+![N|Solid](https://i.gyazo.com/d40e8ab9a4a5a36cee6325acd5a7a1d8.png)
 
 Next you can run the StartBot.bat file
 
