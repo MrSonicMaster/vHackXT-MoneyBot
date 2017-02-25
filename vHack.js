@@ -9,72 +9,135 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 */
 const Methods = require('./methods.js');
 
-class vHackBot {
-  constructor(clientID) {
-    this.delayBetweenActions = 2400; // In milliseconds.
-    this.agent = null;//agents[clientID] || null;
-    this.clientID = clientID || 0;
-    this.isGlobalSearch = 1;
-    this.debugLevel = 0; // Log level, 0-4 (0=normal, 4=debug)
-    this.log(`INIT delay=${this.delayBetweenActions} isGlobal=${this.isGlobalSearch}`, 4);
-    this.login();
-  }
+class vHackBot { // Due to API update v3, having multiple 'clients' seems to no longer be possible.
+	constructor(clientID) {
+		this.delayBetweenActions = 2400; // In milliseconds.
+		this.clientID = clientID || 0;
+		this.isGlobalSearch = 1;
+		this.debugLevel = 0; // Log level-4 (0=normal, 4=debug)
+		this.ignoreWhenNotAnonymous = true;
+		this.log(`INIT delay=${this.delayBetweenActions} isGlobal=${this.isGlobalSearch}`, 4);
+		this.login();
+	}
 
-  login() {
-    this.log('Starting login...', 1);
-    Methods.getUserInfo(this.agent, (userInfo) => {
-      if (userInfo.toString().includes('Fatal')) return this.log(userInfo, 0);
-      if (!userInfo.ip) return this.log('Fatal Error: Invalid login credentials?', 0);
-      this.log(`Logged in; userIP=${userInfo.ip}`, 0);
-      setTimeout(this.getPlayerList.bind(this), this.delayBetweenActions);
-      this.log(`Got user data ${userInfo}`, 4);
-    });
-  }
+	login() {
+		this.log('Starting login...', 0);
+		Methods.getUserInfo((userInfo) => {
+			if (userInfo.toString().includes('Fatal')) return this.log(userInfo);
+			if (!userInfo.ip) return this.log('Fatal Error: Invalid login credentials, script will exit.'), process.exit(0);
+			this.log(`Logged in; userIP=${userInfo.ip}`);
+			Methods.updateUHashStr(userInfo.uhash);
+			setTimeout(this.getPlayerList.bind(this), this.delayBetweenActions);
+			this.log(`Got user data ${JSON.stringify(userInfo)}`, 4);
+		});
+	}
 
-  getPlayerList() {
-    this.log('Get new player list.', 0);
-    Methods.getPlayerList(this.agent, this.isGlobalSearch, (playerList) => {
-      if (playerList.toString().includes('Fatal')) return this.log(playerList, 0);
-      this.parsePlayerList(playerList.data);
-      this.log(`Got list data ${playerList}`, 4);
-    });
-  }
+	getPlayerList() {
+		this.log('Get new player list.');
+		Methods.getPlayerList(this.isGlobalSearch, (playerList) => {
+			if (playerList.toString().includes('Fatal')) return setTimeout(this.getPlayerList.bind(this), this.delayBetweenActions);
+			this.parsePlayerList(playerList);
+			this.log(`Got list data ${JSON.stringify(playerList)}`, 4);
+		});
+	}
 
-  parsePlayerList(playerList) {
-    for (let i = 0; i < playerList.length; i++) {
-      setTimeout(() => {
-        const player = playerList[i];
-        this.log(`Parsed player data ${player}`, 4);
-        const alreadyAttacked = player.attacked;
-        const playerIP = player.ip;
-        if ((i + 1) == playerList.length) this.getPlayerList();
-        if (alreadyAttacked == '1') return;
-        this.scanPlayer(playerIP);
-      }, i * this.delayBetweenActions);
-    }
-  }
+	parsePlayerList(playerList) {
+		for (let i = 0; i < playerList.length; i++) {
+			setTimeout(() => {
+				const player = playerList[i];
+				this.log(`Parsed player data ${JSON.stringify(player)}`, 4);
+				const playerHostname = player.hostname;
+				const watchedByFBI = Methods.imageToText(player.img, (result) => {
+					if (result.toLowerCase().includes("firewall") && !result.toLowerCase().includes("FBI")) {
+						if ((i + 1) == playerList.length) setTimeout(this.getPlayerList.bind(this), this.delayBetweenActions);
+						this.resolveIPFromHostname(playerHostname);
+					} else this.log(`Saved from attacking an FBI watched host.`);
+				});
+			}, i * this.delayBetweenActions);
+		}
+	}
 
-  scanPlayer(playerIP) {
-    Methods.scanPlayer(this.agent, playerIP, (scanResult) => {
-      if (scanResult.toString().includes('Fatal')) return this.log(scanResult, 0);
-      if (!scanResult.includes('Anonymous: ')) return;
-      const isAnonymous = scanResult.split('Anonymous: ')[1].split('\n')[0];
-      if (isAnonymous == "YES") setTimeout(() => { this.hackPlayer(playerIP); }, this.delayBetweenActions);
-      this.log(`Scanned player ${playerIP} scanResult ${scanResult}`, 4);
-    });
-  }
+	resolveIPFromHostname(playerHostname) {
+		Methods.resolveIPFromHostname(playerHostname, (result) => {
+			if (result.toString().includes('Fatal')) return this.log(result);
+			if (!(result instanceof Object)) {
+				switch (result) {
+					case 9:
+						this.log('Your computer is blocked by the FBI. Try again later. Script will exit.');
+						process.exit(0);
+						break;
+				}
+				return;
+			}
+			const playerIP = result.ipaddress;
+			setTimeout(() => {
+				this.scanPlayer(playerIP);
+			}, this.delayBetweenActions);
+		});
+	}
 
-  hackPlayer(playerIP) {
-    Methods.hackPlayer(this.agent, playerIP, (result) => {
-      if (result.toString().includes('Fatal')) return this.log(result, 0);
-      this.log(`Hacked player ${playerIP} result ${result}`, 4);
-      if (result.result == "0") this.log(`Gained: $${result.amount}. New money amount: $${result.newmoney}.`, 0);
-    });
-  }
+	scanPlayer(playerIP) {
+		Methods.scanPlayer(playerIP, (scanResult) => {
+			if (scanResult.toString().includes('Fatal')) return this.log(scanResult);
+			let matches = 0;
+			for (let i = 0; i < 4; i++) { // 4 is the amount of possible passwords
+				Methods.imageToText(scanResult['img_' + i], (password) => {
+					const passwordMatched = Methods.checkPassword(password, scanResult.secret);
+					if (passwordMatched) {
+						setTimeout(() => {
+							this.connectToPlayer(i + 1, password, scanResult.secret);
+						}, i * this.delayBetweenActions);
+						this.log(`Password ${password} matched secret ${scanResult.secret}.`);
+						matches++;
+					}
+					this.log(`Password is ${password}, secret is ${scanResult.secret}, is match? ${Methods.checkPassword(password, scanResult.secret)}`, 2);
+				});
+			}
+			if (matches < 1) this.log('Failed to match a password!');
+			this.log(`Scanned player ${playerIP} scanResult ${JSON.stringify(scanResult)}`, 4);
+		});
+	}
 
-  log(message, logLevel = 4) {
-    if (this.debugLevel >= logLevel) console.log(`Client ${this.clientID}: ${message}`);
-  }
+	connectToPlayer(decision, password, secret) {
+		Methods.connectToPlayer(decision, (result) => {
+			if (result.toString().includes('Fatal')) return this.log(result);
+			switch (result) {
+				case "0":
+					setTimeout(this.loadRemoteData.bind(this), this.delayBetweenActions);
+					this.log('Connecting to player.');
+					break;
+				case "14":
+					this.log('Target already attacked, wait 10 minutes.');
+					break;
+				case "15":
+					this.log(`ERROR: Bot chose wrong password. Pass=${password} secret=${secret}`);
+					break;
+			}
+		});
+	}
+
+	loadRemoteData() {
+		Methods.loadRemoteData((result) => {
+			if (result.toString().includes('Fatal')) return this.log(result);
+			if (this.ignoreWhenNotAnonymous && result.anonymous == "NO") return; // We don't want to risk attacking someone who would come back and destroy us.
+			setTimeout(() => {
+				this.hackPlayer(result.ipaddress);
+			}, this.delayBetweenActions);
+			this.log(`Player queued to hack. userIP=${result.ipaddress}, userName=${result.username}, money=$${result.money.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,")}.`, 1);
+		});
+	}
+
+	hackPlayer(playerIP) {
+		Methods.hackPlayer(playerIP, (result) => {
+			if (result.toString().includes('Fatal')) return this.log(result);
+			this.log(`Hacked player ${playerIP} result ${JSON.stringify(result)}`, 4);
+			if (result.result == "0") this.log(`Gained: $${result.amount.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,")}. New money amount: $${result.newmoney.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,")}.`);
+		});
+	}
+
+	log(message, logLevel = 0) {
+		if (this.debugLevel >= logLevel) console.log(`Client ${this.clientID}: ${message}`);
+	}
 }
 
 new vHackBot(0);

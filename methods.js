@@ -13,70 +13,99 @@ const MD5 = require('md5');
 const fs = require('fs');
 
 class Methods {
-  constructor() {
-    this.baseURL = 'https://api.vhack.cc/v/2/'; // Changes with updates
-    this.config = JSON.parse(fs.readFileSync('./config.json'));
-    this.userName = this.config.userName;
-    this.userPass = this.config.userPass;
-    this.uHashStr = this.config.uHashStr;
-  }
+	constructor() {
+		this.baseURL = 'https://api.vhack.cc/v/3/'; // Changes with updates
+		this.config = JSON.parse(fs.readFileSync('./config.json'));
+	}
 
-  getEndURL(options, values, subURL) { // Helper function, taken from the decompiled app.
-    const optionsArr = options.toString().split(';');
-    const valuesArr = values.toString().split(';');
-    const currentTimeMillis = (~~(Date.now() / 1000)).toString();
-    const jsonObj = {};
-    for (let i = 0; i < optionsArr.length; i++) jsonObj[optionsArr[i]] = valuesArr[i];
-    jsonObj['time'] = currentTimeMillis;
-    jsonObj['user'] = this.userName;
-    jsonObj['pass'] = this.userPass;
-    jsonObj['uhash'] = this.uHashStr;
-    const jsonStr = JSON.stringify(jsonObj);
-    let base64Json = base64(jsonStr);
-    let a2 = MD5(jsonStr.length + MD5(currentTimeMillis));
-    let str5 = this.userName + MD5(MD5(this.userPass));
-    let str4 = MD5(currentTimeMillis.toString() + '' + jsonStr);
-    a2 = MD5('aeffI' + MD5(MD5(base64(a2))));
-    str5 = base64(str5);
-    str4 = MD5(MD5(a2 + MD5(MD5(str5) + base64(str4))));
-    return `${this.baseURL}${subURL}?user=${base64Json}&pass=${str4}`;
-  }
+	getEndURL(options, values, subURL) { // Helper function, taken from the decompiled app.
+		const optionsArr = options.toString().split(';');
+		const valuesArr = values.toString().split(';');
+		const currentTimeMillis = (~~(Date.now() / 1000)).toString();
+		const jsonObj = {};
+		for (let i = 0; i < optionsArr.length; i++) jsonObj[optionsArr[i]] = valuesArr[i];
+		jsonObj['time'] = currentTimeMillis;
+		jsonObj['user'] = this.config.userName;
+		jsonObj['pass'] = this.config.userPass;
+		jsonObj['uhash'] = this.config.uHashStr;
+		const jsonStr = JSON.stringify(jsonObj);
+		let base64Json = base64(jsonStr);
+		let a2 = MD5(jsonStr.length + MD5(currentTimeMillis)); // TODO: Update var names to make more sense.
+		let str5 = this.config.userName + MD5(MD5(this.config.userPass));
+		let str4 = MD5(currentTimeMillis.toString() + '' + jsonStr);
+		a2 = MD5('aeffI' + MD5(MD5(base64(a2))));
+		str5 = base64(str5);
+		str4 = MD5(MD5(a2 + MD5(MD5(str5) + base64(str4))));
+		return `${this.baseURL}${subURL}?user=${base64Json}&pass=${str4}`;
+	}
 
-  getUserInfo(agent, onfinish) { // TODO: Dry up this code, very repetitive.
-    const options = { url: this.getEndURL('', '', 'vh_update.php') };
-    if (agent) options.agent = agent;
-    request(options, (err, res, body) => {
-      if (err || res.statusCode !== 200) return onfinish(`Fatal error: ${err}.`);
-      onfinish(JSON.parse(body));
-    });
-  }
+	updateUHashStr(uHashStr) { // Not necessary, but in case they later add checking for this.
+		this.config.uHashStr = uHashStr;
+		fs.writeFileSync('./config.json', JSON.stringify(this.config));
+	}
 
-  getPlayerList(agent, isGlobal, onfinish) {
-    const options = { url: this.getEndURL('global', isGlobal, 'vh_network.php') };
-    if (agent) options.agent = agent;
-    request(options, (err, res, body) => {
-      if (err || res.statusCode !== 200) return onfinish(`Fatal error: ${err}.`);
-      onfinish(JSON.parse(body));
-    });
-  }
+	getUserInfo(onfinish) { // TODO: Dry up this code, very repetitive.
+		request(this.getEndURL('', '', 'vh_update.php'), (err, res, body) => {
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
+			onfinish(JSON.parse(body));
+		});
+	}
 
-  scanPlayer(agent, playerIP, onfinish) {
-    const options = { url: this.getEndURL('target', playerIP, 'vh_scan.php') };
-    if (agent) options.agent = agent;
-    request(options, (err, res, body) => {
-      if (err || res.statusCode !== 200) return onfinish(`Fatal error: ${err}.`);
-      onfinish(body);
-    });
-  }
+	getPlayerList(isGlobal, onfinish) {
+		request(this.getEndURL('global', isGlobal, 'vh_getImg.php'), (err, res, body) => {
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
+			onfinish(JSON.parse(body).data);
+		});
+	}
 
-  hackPlayer(agent, playerIP, onfinish) {
-    const options = { url: this.getEndURL('target', playerIP, 'vh_trTransfer.php') };
-    if (agent) options.agent = agent;
-    request(options, (err, res, body) => {
-      if (err || res.statusCode !== 200) return onfinish(`Fatal error: ${err}.`);
-      onfinish(JSON.parse(body));
-    });
-  }
+	resolveIPFromHostname(playerHostname, onfinish) {
+		request(this.getEndURL('hostname', playerHostname, 'vh_getIpByHostname.php'), (err, res, body) => {
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
+			onfinish(JSON.parse(body));
+		});
+	}
+
+	scanPlayer(playerIP, onfinish) {
+		request(this.getEndURL('target', playerIP, 'vh_vulnScan.php'), (err, res, body) => {
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
+			onfinish(JSON.parse(body));
+		});
+	}
+
+	imageToText(image, onfinish) { // Not always perfect, but is close enough.
+		request(`https://megascouts.ml/ocr.php?png=${image}`, (err, res, body) => {
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
+			onfinish(body);
+		});
+	}
+
+	checkPassword(password, secret) { // Known bug: when the secret has 3 characters, it sometimes chooses the wrong password.
+		let matches = 0;
+		for (let i = 0; i < password.length; i++)
+			if (password[i] == secret[i]) matches++;
+		return matches >= 2;
+	}
+
+	connectToPlayer(decision, onfinish) {
+		request(this.getEndURL('decision', decision, 'vh_createConnection.php'), (err, res, body) => {
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
+			onfinish(body);
+		});
+	}
+
+	loadRemoteData(onfinish) {
+		request(this.getEndURL('', '', 'vh_loadRemoteData.php'), (err, res, body) => {
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
+			onfinish(JSON.parse(body));
+		});
+	}
+
+	hackPlayer(playerIP, onfinish) {
+		request(this.getEndURL('target', playerIP, 'vh_trTransfer.php'), (err, res, body) => {
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
+			onfinish(JSON.parse(body));
+		});
+	}
 }
 
 module.exports = new Methods();
