@@ -14,8 +14,8 @@ const fs = require('fs');
 
 class Methods {
 	constructor() {
-		this.baseURL = 'https://api.vhack.cc/v/3/'; // Changes with updates
-		this.config = JSON.parse(fs.readFileSync('./config.json'));
+		this.baseURL = 'https://api.vhack.cc/v/4/'; // Changes with updates
+		this.config = this.parseJSON(fs.readFileSync('./config.json'));
 	}
 
 	getEndURL(options, values, subURL) { // Helper function, taken from the decompiled app.
@@ -41,70 +41,64 @@ class Methods {
 
 	updateUHashStr(uHashStr) { // Not necessary, but in case they later add checking for this.
 		this.config.uHashStr = uHashStr;
-		fs.writeFileSync('./config.json', JSON.stringify(this.config));
+		fs.writeFileSync('./config.json', JSON.stringify(this.config)); // TODO: Maybe beautify this before storing this?
 	}
 
 	getUserInfo(onfinish) { // TODO: Dry up this code, very repetitive.
 		request(this.getEndURL('', '', 'vh_update.php'), (err, res, body) => {
-			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
-			onfinish(JSON.parse(body));
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode} for vh_update.php.`);
+			onfinish(this.parseJSON(body));
 		});
 	}
 
 	getPlayerList(isGlobal, onfinish) {
 		request(this.getEndURL('global', isGlobal, 'vh_getImg.php'), (err, res, body) => {
-			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
-			onfinish(JSON.parse(body).data);
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode} for vh_getImg.php.`);
+			onfinish(this.parseJSON(body).data);
 		});
 	}
 
 	resolveIPFromHostname(playerHostname, onfinish) {
-		request(this.getEndURL('hostname', playerHostname, 'vh_getIpByHostname.php'), (err, res, body) => {
-			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
-			onfinish(JSON.parse(body));
+		request(this.getEndURL('hostname', playerHostname, 'vh_scanHost.php'), (err, res, body) => {
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode} for vh_scanHost.php.`);
+			onfinish(this.parseJSON(body));
 		});
 	}
 
-	scanPlayer(playerIP, onfinish) {
-		request(this.getEndURL('target', playerIP, 'vh_vulnScan.php'), (err, res, body) => {
-			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
-			onfinish(JSON.parse(body));
-		});
-	}
-
-	imageToText(image, onfinish) { // Not always perfect, but is close enough.
-		request(`https://megascouts.ml/ocr.php?png=${image}`, (err, res, body) => {
-			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
+	imageToText(image, allNumbers, onfinish) { // Not always perfect, but is close enough sometimes.
+		request(`https://megascouts.ml/ocr.php?png=${image}&allNumbers=` + allNumbers, (err, res, body) => {
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode} for MegaScouts ocr.php.`);
 			onfinish(body);
 		});
 	}
 
-	checkPassword(password, secret) { // Known bug: when the secret has 3 characters, it sometimes chooses the wrong password.
+	checkPassword(checkpassword, realpassword) { // Passwords are 5 characters long
 		let matches = 0;
-		for (let i = 0; i < password.length; i++)
-			if (password[i] == secret[i]) matches++;
-		return matches >= 2;
+		for (let i = 0; i < realpassword.length; i++)
+			if (realpassword[i] == checkpassword[i]) matches++;
+		return matches >= (realpassword.length - 1); // Not super strict.
 	}
 
-	connectToPlayer(decision, onfinish) {
-		request(this.getEndURL('decision', decision, 'vh_createConnection.php'), (err, res, body) => {
-			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
-			onfinish(body);
+	loadRemoteData(playerIP, onfinish) {
+		request(this.getEndURL('target', playerIP, 'vh_loadRemoteData.php'), (err, res, body) => {
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode} for vh_loadRemoteData.php.`);
+			onfinish(this.parseJSON(body));
 		});
 	}
 
-	loadRemoteData(onfinish) {
-		request(this.getEndURL('', '', 'vh_loadRemoteData.php'), (err, res, body) => {
-			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
-			onfinish(JSON.parse(body));
+	hackPlayer(playerIP, port, onfinish) {
+		request(this.getEndURL('target;port', `${playerIP};${port}`, 'vh_trTransfer.php'), (err, res, body) => {
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode} for vh_trTransfer.php.`);
+			onfinish(this.parseJSON(body));
 		});
 	}
 
-	hackPlayer(playerIP, onfinish) {
-		request(this.getEndURL('target', playerIP, 'vh_trTransfer.php'), (err, res, body) => {
-			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode}.`);
-			onfinish(JSON.parse(body));
-		});
+	parseJSON(JSONString) {
+		try {
+			return JSON.parse(JSONString);
+		} catch (error) {
+			return `Fatal error: Failed to parse JSON. Invalid API response, outdated API version?`;
+		}
 	}
 }
 

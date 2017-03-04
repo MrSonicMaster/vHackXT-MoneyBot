@@ -47,11 +47,11 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
 				const player = playerList[i];
 				this.log(`Parsed player data ${JSON.stringify(player)}`, 4);
 				const playerHostname = player.hostname;
-				const watchedByFBI = Methods.imageToText(player.img, (result) => {
+				const watchedByFBI = Methods.imageToText(player.img, false, (result) => {
 					if (result.toLowerCase().includes("firewall") && !result.toLowerCase().includes("FBI")) {
-						if ((i + 1) == playerList.length) setTimeout(this.getPlayerList.bind(this), this.delayBetweenActions);
 						this.resolveIPFromHostname(playerHostname);
 					} else this.log(`Saved from attacking an FBI watched host.`);
+					if ((i + 1) == playerList.length) setTimeout(this.getPlayerList.bind(this), this.delayBetweenActions);
 				});
 			}, i * this.delayBetweenActions);
 		}
@@ -71,64 +71,34 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
 			}
 			const playerIP = result.ipaddress;
 			setTimeout(() => {
-				this.scanPlayer(playerIP);
+				this.loadRemoteData(playerIP);
 			}, this.delayBetweenActions);
 		});
 	}
 
-	scanPlayer(playerIP) {
-		Methods.scanPlayer(playerIP, (scanResult) => {
-			if (scanResult.toString().includes('Fatal')) return this.log(scanResult);
-			let matches = 0;
-			for (let i = 0; i < 4; i++) { // 4 is the amount of possible passwords
-				Methods.imageToText(scanResult['img_' + i], (password) => {
-					const passwordMatched = Methods.checkPassword(password, scanResult.secret);
-					if (passwordMatched) {
-						setTimeout(() => {
-							this.connectToPlayer(i + 1, password, scanResult.secret);
-						}, i * this.delayBetweenActions);
-						this.log(`Password ${password} matched secret ${scanResult.secret}.`);
-						matches++;
-					}
-					this.log(`Password is ${password}, secret is ${scanResult.secret}, is match? ${Methods.checkPassword(password, scanResult.secret)}`, 2);
-				});
-			}
-			if (matches < 1) this.log('Failed to match a password!');
-			this.log(`Scanned player ${playerIP} scanResult ${JSON.stringify(scanResult)}`, 4);
-		});
-	}
-
-	connectToPlayer(decision, password, secret) {
-		Methods.connectToPlayer(decision, (result) => {
-			if (result.toString().includes('Fatal')) return this.log(result);
-			switch (result) {
-				case "0":
-					setTimeout(this.loadRemoteData.bind(this), this.delayBetweenActions);
-					this.log('Connecting to player.');
-					break;
-				case "14":
-					this.log('Target already attacked, wait 10 minutes.');
-					break;
-				case "15":
-					this.log(`ERROR: Bot chose wrong password. Pass=${password} secret=${secret}`);
-					break;
-			}
-		});
-	}
-
-	loadRemoteData() {
-		Methods.loadRemoteData((result) => {
+	loadRemoteData(playerIP) {
+		Methods.loadRemoteData(playerIP, (result) => {
 			if (result.toString().includes('Fatal')) return this.log(result);
 			if (this.ignoreWhenNotAnonymous && result.anonymous == "NO") return; // We don't want to risk attacking someone who would come back and destroy us.
-			setTimeout(() => {
-				this.hackPlayer(result.ipaddress);
-			}, this.delayBetweenActions);
-			this.log(`Player queued to hack. userIP=${result.ipaddress}, userName=${result.username}, money=$${result.money.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,")}.`, 1);
+			Methods.imageToText(result.img, true, (password) => {
+				for (let i = 1; i <= 6; i++) { // 6 is the amount of password choices sent.
+					const checkPassword = result['p' + i].toString();
+					const passwordMatched = Methods.checkPassword(checkPassword, password.toString());
+					this.log(`Checking passord ${checkPassword} with password ${password}, match? ${passwordMatched}.`, 1);
+					if (passwordMatched) {
+						setTimeout(() => {
+							this.hackPlayer(playerIP, i);
+						}, this.delayBetweenActions);
+						this.log(`Player queued to hack. userIP=${result.ipaddress}, userName=${result.username}, money=$${result.money.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,")}.`, 1);
+						break; // We got a password match, don't test any other passwords.
+					}
+				}
+			});
 		});
 	}
 
-	hackPlayer(playerIP) {
-		Methods.hackPlayer(playerIP, (result) => {
+	hackPlayer(playerIP, port) {
+		Methods.hackPlayer(playerIP, port, (result) => {
 			if (result.toString().includes('Fatal')) return this.log(result);
 			this.log(`Hacked player ${playerIP} result ${JSON.stringify(result)}`, 4);
 			if (result.result == "0") this.log(`Gained: $${result.amount.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,")}. New money amount: $${result.newmoney.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,")}.`);
