@@ -1,5 +1,5 @@
 # vHack-MoneyBot
-## BOT WORKS ON LATEST UPDATE (API v3) AS OF 2/24/17
+## UPDATE: BOT WORKS ON LATEST UPDATE (API v4) AS OF 3/3/17
 
 vHack MoneyBot is an open-source automated bot for the android game [vHack XT](https://play.google.com/store/apps/details?id=org.vhack.dev.vhack).
 
