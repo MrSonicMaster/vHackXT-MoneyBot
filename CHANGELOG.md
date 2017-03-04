@@ -10,4 +10,5 @@ Also, the API scripts seem to store some things server-side, such as the current
 ### Bot v3
 + Works on API v4
 + Password checking changed
+
 Not tested, but possibility for running on proxies again? Less temporary stuff is stored server side now.
