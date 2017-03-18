@@ -12,3 +12,7 @@ Also, the API scripts seem to store some things server-side, such as the current
 + Password checking changed
 
 Not tested, but possibility for running on proxies again? Less temporary stuff is stored server side now.
+
+### Bot v4
++ Bug fixes, fixed crash 'Cannot read property statusCode of undefined'
++ Added package.json
