@@ -46,28 +46,28 @@ class Methods {
 
 	getUserInfo(onfinish) { // TODO: Dry up this code, very repetitive.
 		request(this.getEndURL('', '', 'vh_update.php'), (err, res, body) => {
-			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode} for vh_update.php.`);
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res && res.statusCode ? res.statusCode : 'failed to get server response'} for vh_update.php.`);
 			onfinish(this.parseJSON(body));
 		});
 	}
 
 	getPlayerList(isGlobal, onfinish) {
 		request(this.getEndURL('global', isGlobal, 'vh_getImg.php'), (err, res, body) => {
-			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode} for vh_getImg.php.`);
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res && res.statusCode ? res.statusCode : 'failed to get server response'} for vh_getImg.php.`);
 			onfinish(this.parseJSON(body).data);
 		});
 	}
 
 	resolveIPFromHostname(playerHostname, onfinish) {
 		request(this.getEndURL('hostname', playerHostname, 'vh_scanHost.php'), (err, res, body) => {
-			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode} for vh_scanHost.php.`);
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res && res.statusCode ? res.statusCode : 'failed to get server response'} for vh_scanHost.php.`);
 			onfinish(this.parseJSON(body));
 		});
 	}
 
 	imageToText(image, allNumbers, onfinish) { // Not always perfect, but is close enough sometimes.
 		request(`https://megascouts.ml/ocr.php?png=${image}&allNumbers=` + allNumbers, (err, res, body) => {
-			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode} for MegaScouts ocr.php.`);
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res && res.statusCode ? res.statusCode : 'failed to get server response'} for MegaScouts ocr.php.`);
 			onfinish(body);
 		});
 	}
@@ -81,14 +81,14 @@ class Methods {
 
 	loadRemoteData(playerIP, onfinish) {
 		request(this.getEndURL('target', playerIP, 'vh_loadRemoteData.php'), (err, res, body) => {
-			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode} for vh_loadRemoteData.php.`);
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res && res.statusCode ? res.statusCode : 'failed to get server response'} for vh_loadRemoteData.php.`);
 			onfinish(this.parseJSON(body));
 		});
 	}
 
 	hackPlayer(playerIP, port, onfinish) {
 		request(this.getEndURL('target;port', `${playerIP};${port}`, 'vh_trTransfer.php'), (err, res, body) => {
-			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res.statusCode} for vh_trTransfer.php.`);
+			if (err || res.statusCode !== 200) return onfinish(`Fatal error: Status code is ${res && res.statusCode ? res.statusCode : 'failed to get server response'} for vh_trTransfer.php.`);
 			onfinish(this.parseJSON(body));
 		});
 	}
