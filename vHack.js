@@ -29,7 +29,9 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
 			if (!userInfo.ip) return this.log('Fatal Error: Invalid login credentials, script will exit.'), process.exit(0);
 			log.i('Logged in with IP ' + userInfo.ip);
 			Methods.updateUHashStr(userInfo.uhash);
+
 			setTimeout(this.getPlayerList.bind(this), this.delayBetweenActions);
+			setTimeout(this.getUpgrades.bind(this), this.delayBetweenActions * (Math.random() + .5));
 
 			this.log(`Got user data ${JSON.stringify(userInfo)}`, 4);
 		});
@@ -42,6 +44,16 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
 			this.parsePlayerList(playerList);
 			this.log(`Got list data ${JSON.stringify(playerList)}`, 4);
 		});
+	}
+
+	getUpgrades() {
+		Methods.getRunningTasks((tasks) => {
+			for (let i = 0; i < tasks.data.length; i++) {
+				let selected = tasks.data[i]; // TODO: I suck in naming variables, i'm sorry
+				log.i('Tasking running ' + selected.type);
+			}
+		});
+        setTimeout(this.getUpgrades.bind(this), this.delayBetweenActions * (Math.random() * 2 + 3));
 	}
 
 	parsePlayerList(playerList) {

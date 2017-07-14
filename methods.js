@@ -39,9 +39,9 @@ class Methods {
 		return `${this.baseURL}${subURL}?user=${base64Json}&pass=${str4}`;
 	}
 
-    getRunningTasks() {
+    getRunningTasks(callback) {
         request(this.getEndURL('', '', 'vh_tasks.php'), (err, res, body) => {
-            console.log(this.parseJSON(body));
+            callback(this.parseJSON(body));
         });
     }
 
