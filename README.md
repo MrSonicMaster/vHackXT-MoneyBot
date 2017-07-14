@@ -21,6 +21,12 @@ Or if you're familiar with node just run
 $ npm install
 ```
 
+Then create a file called `config.json` and add the following to it
+
+```json
+{"userName":"ChangeMe","userPass":"ChangeMe","uHashStr":"DontChangeMe"}
+```
+
 ### Usage
 To use vHack-MoneyBot, you must first put your login credentials into the config.json
 ![N|Solid](https://i.gyazo.com/d40e8ab9a4a5a36cee6325acd5a7a1d8.png)

@@ -31,7 +31,7 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
 			Methods.updateUHashStr(userInfo.uhash);
 
 			setTimeout(this.getPlayerList.bind(this), this.delayBetweenActions);
-			setTimeout(this.getUpgrades.bind(this), this.delayBetweenActions * (Math.random() + .5));
+			// setTimeout(this.getUpgrades.bind(this), this.delayBetweenActions * (Math.random() + .5));
 
 			this.log(`Got user data ${JSON.stringify(userInfo)}`, 4);
 		});
