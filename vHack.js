@@ -8,10 +8,13 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 const Methods = require('./methods.js');
+let chalk = require("chalk");
+const log = require('./logger.js');
 
 class vHackBot { // Due to API update v3, having multiple 'clients' seems to no longer be possible.
 	constructor(clientID) {
-		this.delayBetweenActions = 2100; // In milliseconds.
+		this.delayBetweenActions = Math.random() * 1000 + 2000; // In milliseconds.
+		log.i('Initialised with a random delay of ' + this.delayBetweenActions);
 		this.clientID = clientID || 0;
 		this.isGlobalSearch = 1;
 		this.debugLevel = 0; // Log level-4 (0=normal, 4=debug)
@@ -21,11 +24,10 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
 	}
 
 	login() {
-		this.log('Starting login...', 0);
 		Methods.getUserInfo((userInfo) => {
 			if (userInfo.toString().includes('Fatal')) return this.log(userInfo);
 			if (!userInfo.ip) return this.log('Fatal Error: Invalid login credentials, script will exit.'), process.exit(0);
-			this.log(`Logged in; userIP=${userInfo.ip}`);
+			log.i('Logged in with IP ' + userInfo.ip);
 			Methods.updateUHashStr(userInfo.uhash);
 			setTimeout(this.getPlayerList.bind(this), this.delayBetweenActions);
 			this.log(`Got user data ${JSON.stringify(userInfo)}`, 4);
@@ -33,7 +35,7 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
 	}
 
 	getPlayerList() {
-		this.log('Get new player list.');
+		log.i('Getting new player list.');
 		Methods.getPlayerList(this.isGlobalSearch, (playerList) => {
 			if (playerList.toString().includes('Fatal')) return setTimeout(this.getPlayerList.bind(this), this.delayBetweenActions);
 			this.parsePlayerList(playerList);
@@ -50,7 +52,9 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
 				const watchedByFBI = Methods.imageToText(player.img, false, (result) => {
 					if (result.toLowerCase().includes("firewall") && !result.toLowerCase().includes("FBI")) {
 						this.resolveIPFromHostname(playerHostname);
-					} else this.log(`Saved from attacking an FBI watched host. (player is protected by firewall or FBI)`);
+					} else {
+						log.w(`Saved from attacking an FBI watched host. (player is protected by firewall or FBI)`);
+                    }
 					if ((i + 1) == playerList.length) setTimeout(this.getPlayerList.bind(this), this.delayBetweenActions);
 				});
 			}, i * this.delayBetweenActions);
@@ -78,7 +82,7 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
 
 	loadRemoteData(playerIP) {
         if (/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(playerIP)) {
-            console.log(playerIP + ' is a valid IP address');
+			log.i("Attacking " + playerIP);
             Methods.loadRemoteData(playerIP, (result) => {
                 if (result.toString().includes('Fatal')) return this.log(result);
                 // if (this.ignoreWhenNotAnonymous && result.anonymous == "NO") return; // We don't want to risk attacking someone who would come back and destroy us.
@@ -98,7 +102,7 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
                 });
             });
         } else {
-            console.log(playerIP + ' is NOT a valid IP address (i have no idea why it\'s return non valid IP addresses)');
+            log.w(playerIP + ' is NOT a valid IP address (i have no idea why it\'s returning non valid IP addresses)');
 		}
 
 	}
@@ -107,8 +111,13 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
 		Methods.hackPlayer(playerIP, port, (result) => {
 			if (result.toString().includes('Fatal')) return this.log(result);
 			this.log(`Hacked player ${playerIP} result ${JSON.stringify(result)}`, 4);
-			if (result.result == "0") this.log(`Gained: $${result.amount.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,")}. New money amount: $${result.newmoney.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,")}.`);
-		});
+			if (result.result == "0") {
+				let gained = result.amount.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,");
+				let total = result.newmoney.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,");
+            	log.s('Gained $' + gained);
+            	log.s('New total amount $' + total);
+			}
+        });
 	}
 
 	log(message, logLevel = 0) {
