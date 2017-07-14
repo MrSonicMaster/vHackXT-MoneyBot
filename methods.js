@@ -14,7 +14,7 @@ const fs = require('fs');
 
 class Methods {
 	constructor() {
-		this.baseURL = 'https://api.vhack.cc/v/4/'; // Changes with updates
+		this.baseURL = 'https://api.vhack.cc/v/7/'; // Changes with updates
 		this.config = this.parseJSON(fs.readFileSync('./config.json'));
 	}
 

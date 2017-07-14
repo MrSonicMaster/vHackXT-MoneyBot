@@ -18,8 +18,8 @@
     "vhack_cheats"
   ],
   "dependencies": {
-    "md5": "*",
-    "request": "*"
+    "md5": "^2.2.1",
+    "request": "^2.81.0"
   },
   "author": "MrSonicMaster",
   "license": "MIT",

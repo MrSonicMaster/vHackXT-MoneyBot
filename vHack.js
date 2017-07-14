@@ -11,7 +11,7 @@ const Methods = require('./methods.js');
 
 class vHackBot { // Due to API update v3, having multiple 'clients' seems to no longer be possible.
 	constructor(clientID) {
-		this.delayBetweenActions = 2400; // In milliseconds.
+		this.delayBetweenActions = 2100; // In milliseconds.
 		this.clientID = clientID || 0;
 		this.isGlobalSearch = 1;
 		this.debugLevel = 0; // Log level-4 (0=normal, 4=debug)
@@ -50,7 +50,7 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
 				const watchedByFBI = Methods.imageToText(player.img, false, (result) => {
 					if (result.toLowerCase().includes("firewall") && !result.toLowerCase().includes("FBI")) {
 						this.resolveIPFromHostname(playerHostname);
-					} else this.log(`Saved from attacking an FBI watched host.`);
+					} else this.log(`Saved from attacking an FBI watched host. (player is protected by firewall or FBI)`);
 					if ((i + 1) == playerList.length) setTimeout(this.getPlayerList.bind(this), this.delayBetweenActions);
 				});
 			}, i * this.delayBetweenActions);
@@ -77,24 +77,30 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
 	}
 
 	loadRemoteData(playerIP) {
-		Methods.loadRemoteData(playerIP, (result) => {
-			if (result.toString().includes('Fatal')) return this.log(result);
-			if (this.ignoreWhenNotAnonymous && result.anonymous == "NO") return; // We don't want to risk attacking someone who would come back and destroy us.
-			Methods.imageToText(result.img, true, (password) => {
-				for (let i = 1; i <= 6; i++) { // 6 is the amount of password choices sent.
-					const checkPassword = result['p' + i].toString();
-					const passwordMatched = Methods.checkPassword(checkPassword, password.toString());
-					this.log(`Checking passord ${checkPassword} with password ${password}, match? ${passwordMatched}.`, 1);
-					if (passwordMatched) {
-						setTimeout(() => {
-							this.hackPlayer(playerIP, i);
-						}, this.delayBetweenActions);
-						this.log(`Player queued to hack. userIP=${result.ipaddress}, userName=${result.username}, money=$${result.money.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,")}.`, 1);
-						break; // We got a password match, don't test any other passwords.
-					}
-				}
-			});
-		});
+        if (/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(playerIP)) {
+            console.log(playerIP + ' is a valid IP address');
+            Methods.loadRemoteData(playerIP, (result) => {
+                if (result.toString().includes('Fatal')) return this.log(result);
+                // if (this.ignoreWhenNotAnonymous && result.anonymous == "NO") return; // We don't want to risk attacking someone who would come back and destroy us.
+                Methods.imageToText(result.img, true, (password) => {
+                    for (let i = 1; i <= 6; i++) { // 6 is the amount of password choices sent.
+                        const checkPassword = result['p' + i].toString();
+                        const passwordMatched = Methods.checkPassword(checkPassword, password.toString());
+                        this.log(`Checking passord ${checkPassword} with password ${password}, match? ${passwordMatched}.`, 1);
+                        if (passwordMatched) {
+                            setTimeout(() => {
+                                this.hackPlayer(playerIP, i);
+                            }, this.delayBetweenActions);
+                            this.log(`Player queued to hack. userIP=${result.ipaddress}, userName=${result.username}, money=$${result.money.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,")}.`, 1);
+                            break; // We got a password match, don't test any other passwords.
+                        }
+                    }
+                });
+            });
+        } else {
+            console.log(playerIP + ' is NOT a valid IP address (i have no idea why it\'s return non valid IP addresses)');
+		}
+
 	}
 
 	hackPlayer(playerIP, port) {
