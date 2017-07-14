@@ -12,8 +12,14 @@ In order to install vHack-MoneyBot you must download all of the required modules
 ```sh
 $ npm install md5
 $ npm install request
+$ npm install chalk
 ```
 Or run the included InstallDependencies files for your operating system.
+
+Or if you're familiar with node just run
+```sh
+$ npm install
+```
 
 ### Usage
 To use vHack-MoneyBot, you must first put your login credentials into the config.json

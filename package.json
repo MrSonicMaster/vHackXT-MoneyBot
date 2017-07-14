@@ -1,6 +1,6 @@
 {
   "name": "vhack-bot",
-  "version": "4.0.0",
+  "version": "7.0.0",
   "description": "Automatically hack people in the android game vHack XT",
   "main": "vHack.js",
   "scripts": {
