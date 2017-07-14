@@ -1,5 +1,5 @@
 # vHack-MoneyBot
-## UPDATE: Outdated, my account got banned, I lost motivation to continue this. If anyone wants to, you are free to fork this project and continue it on your own. Good luck.
+## Works with the latest v7
 
 NOTE: I made this bot because I was BORED, NOT because I want to ruin the game. By downloading and using this bot you agree that I, the creator, cannot be held responsible for any action taken against you (getting banned, etc.)
 
