@@ -13,7 +13,7 @@ const log = require('./logger.js');
 
 class vHackBot { // Due to API update v3, having multiple 'clients' seems to no longer be possible.
 	constructor(clientID) {
-		this.delayBetweenActions = Math.random() * 1000 + 2000; // In milliseconds.
+		this.delayBetweenActions = Math.random() * 3000 + 4000; // In milliseconds.
 		log.i('Initialised with a random delay of ' + this.delayBetweenActions);
 		this.clientID = clientID || 0;
 		this.isGlobalSearch = 1;
@@ -30,6 +30,7 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
 			log.i('Logged in with IP ' + userInfo.ip);
 			Methods.updateUHashStr(userInfo.uhash);
 			setTimeout(this.getPlayerList.bind(this), this.delayBetweenActions);
+
 			this.log(`Got user data ${JSON.stringify(userInfo)}`, 4);
 		});
 	}
@@ -82,7 +83,7 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
 
 	loadRemoteData(playerIP) {
         if (/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(playerIP)) {
-			log.i("Attacking " + playerIP);
+			log.i("Checking " + playerIP);
             Methods.loadRemoteData(playerIP, (result) => {
                 if (result.toString().includes('Fatal')) return this.log(result);
                 // if (this.ignoreWhenNotAnonymous && result.anonymous == "NO") return; // We don't want to risk attacking someone who would come back and destroy us.
@@ -90,12 +91,13 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
                     for (let i = 1; i <= 6; i++) { // 6 is the amount of password choices sent.
                         const checkPassword = result['p' + i].toString();
                         const passwordMatched = Methods.checkPassword(checkPassword, password.toString());
-                        this.log(`Checking passord ${checkPassword} with password ${password}, match? ${passwordMatched}.`, 1);
                         if (passwordMatched) {
+                        	let delay = this.delayBetweenActions * (Math.random() + .5);
                             setTimeout(() => {
                                 this.hackPlayer(playerIP, i);
-                            }, this.delayBetweenActions);
+                            }, delay);
                             this.log(`Player queued to hack. userIP=${result.ipaddress}, userName=${result.username}, money=$${result.money.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,")}.`, 1);
+                            log.i('Hacking ' + result.ipaddress + ' - ' + result.username + ' Anonymous? ' + result.anonymous + ' | with a delay of ' + delay);
                             break; // We got a password match, don't test any other passwords.
                         }
                     }
@@ -110,12 +112,11 @@ class vHackBot { // Due to API update v3, having multiple 'clients' seems to no 
 	hackPlayer(playerIP, port) {
 		Methods.hackPlayer(playerIP, port, (result) => {
 			if (result.toString().includes('Fatal')) return this.log(result);
-			this.log(`Hacked player ${playerIP} result ${JSON.stringify(result)}`, 4);
 			if (result.result == "0") {
 				let gained = result.amount.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,");
 				let total = result.newmoney.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,");
-            	log.s('Gained $' + gained);
-            	log.s('New total amount $' + total);
+            	log.s('GAIN [ USD: ' + gained + ' | ELO: ' + result.eloch + ' ]');
+            	log.s('TOTAL [ USD: ' + total + ' | ELO: ' + result.elo + ' ]');
 			}
         });
 	}

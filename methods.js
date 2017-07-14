@@ -39,6 +39,18 @@ class Methods {
 		return `${this.baseURL}${subURL}?user=${base64Json}&pass=${str4}`;
 	}
 
+    getRunningTasks() {
+        request(this.getEndURL('', '', 'vh_tasks.php'), (err, res, body) => {
+            console.log(this.parseJSON(body));
+        });
+    }
+
+    doUpgrade(type) {
+        request(this.getEndURL('utype', type, 'vh_addUpdate.php'), (err, res, body) => {
+            console.log(this.parseJSON(body));
+        });
+    }
+
 	updateUHashStr(uHashStr) { // Not necessary, but in case they later add checking for this.
 		this.config.uHashStr = uHashStr;
 		fs.writeFileSync('./config.json', JSON.stringify(this.config)); // TODO: Maybe beautify this before storing this?
